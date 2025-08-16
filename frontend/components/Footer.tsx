@@ -1,66 +1,121 @@
-import { FileText } from "lucide-react"
+import Link from "next/link"
+import { Brain, Twitter, Linkedin, Github } from "lucide-react"
 
-export default function Footer() {
+export function Footer() {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-12">
+    <footer className="bg-muted/30 border-t border-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid md:grid-cols-4 gap-8">
-          <div className="col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <FileText className="h-6 w-6" />
-              <span className="font-bold text-xl">ResumeAI</span>
-            </div>
-            <p className="text-gray-400 max-w-md">
-              Build professional resumes with AI-powered assistance. Create, customize, and export beautiful resumes in
-              minutes.
+          {/* Logo and Description */}
+          <div className="md:col-span-1">
+            <Link href="/" className="flex items-center space-x-2 mb-4">
+              <div className="bg-primary rounded-lg p-2">
+                <Brain className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <span className="font-space-grotesk font-bold text-xl text-foreground">ResumeAI</span>
+            </Link>
+            <p className="text-muted-foreground text-sm mb-4">
+              AI-powered resume analysis and career growth platform helping professionals advance their careers.
             </p>
+            <div className="flex space-x-4">
+              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                <Twitter className="h-5 w-5" />
+              </Link>
+              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                <Linkedin className="h-5 w-5" />
+              </Link>
+              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                <Github className="h-5 w-5" />
+              </Link>
+            </div>
           </div>
 
+          {/* Product */}
           <div>
-            <h3 className="font-semibold mb-4">Product</h3>
-            <ul className="space-y-2 text-gray-400">
+            <h3 className="font-space-grotesk font-semibold text-foreground mb-4">Product</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <a href="/templates" className="hover:text-white">
-                  Templates
-                </a>
+                <Link href="/analyzer" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Resume Analyzer
+                </Link>
               </li>
               <li>
-                <a href="/editor" className="hover:text-white">
-                  Editor
-                </a>
+                <Link href="/converter" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Text Converter
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-white">
-                  Pricing
-                </a>
+                <Link href="/skills" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Skill Analysis
+                </Link>
+              </li>
+              <li>
+                <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Dashboard
+                </Link>
               </li>
             </ul>
           </div>
 
+          {/* Resources */}
           <div>
-            <h3 className="font-semibold mb-4">Support</h3>
-            <ul className="space-y-2 text-gray-400">
+            <h3 className="font-space-grotesk font-semibold text-foreground mb-4">Resources</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="hover:text-white">
+                <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link href="/guides" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Career Guides
+                </Link>
+              </li>
+              <li>
+                <Link href="/templates" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Resume Templates
+                </Link>
+              </li>
+              <li>
+                <Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">
                   Help Center
-                </a>
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Company */}
+          <div>
+            <h3 className="font-space-grotesk font-semibold text-foreground mb-4">Company</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
+                  About Us
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-white">
+                <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
                   Contact
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#" className="hover:text-white">
-                  Privacy
-                </a>
+                <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Terms of Service
+                </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2024 ResumeAI. All rights reserved.</p>
+        <div className="border-t border-border mt-8 pt-8 text-center">
+          <p className="text-muted-foreground text-sm">
+            © 2024 ResumeAI. All rights reserved. Built with AI to help you succeed.
+          </p>
         </div>
       </div>
     </footer>
