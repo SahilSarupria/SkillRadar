@@ -1,1 +1,0 @@
-# Resumes app initialization
