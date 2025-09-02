@@ -4,9 +4,11 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X, Brain, FileText, BarChart3, BookOpen, User, Settings, Wand2 } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { isAuthenticated, logout } = useAuth()
 
   return (
     <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b border-border">
@@ -50,30 +52,42 @@ export function Navigation() {
               <BookOpen className="h-4 w-4" />
               <span>Learning</span>
             </Link>
-            <Link
-              href="/dashboard"
-              className="text-muted-foreground hover:text-foreground transition-colors flex items-center space-x-1"
-            >
-              <User className="h-4 w-4" />
-              <span>Dashboard</span>
-            </Link>
-            <Link
-              href="/settings"
-              className="text-muted-foreground hover:text-foreground transition-colors flex items-center space-x-1"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Settings</span>
-            </Link>
+            {isAuthenticated && (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-muted-foreground hover:text-foreground transition-colors flex items-center space-x-1"
+                >
+                  <User className="h-4 w-4" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link
+                  href="/settings"
+                  className="text-muted-foreground hover:text-foreground transition-colors flex items-center space-x-1"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Sign In</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/signup">Get Started</Link>
-            </Button>
+            {!isAuthenticated ? (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Get Started</Link>
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" onClick={logout}>
+                Log Out
+              </Button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -100,19 +114,31 @@ export function Navigation() {
             <Link href="/learning" className="block text-muted-foreground hover:text-foreground transition-colors">
               Learning
             </Link>
-            <Link href="/dashboard" className="block text-muted-foreground hover:text-foreground transition-colors">
-              Dashboard
-            </Link>
-            <Link href="/settings" className="block text-muted-foreground hover:text-foreground transition-colors">
-              Settings
-            </Link>
+            {isAuthenticated && (
+              <>
+                <Link href="/dashboard" className="block text-muted-foreground hover:text-foreground transition-colors">
+                  Dashboard
+                </Link>
+                <Link href="/settings" className="block text-muted-foreground hover:text-foreground transition-colors">
+                  Settings
+                </Link>
+              </>
+            )}
             <div className="pt-4 space-y-2">
-              <Button variant="ghost" className="w-full" asChild>
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button className="w-full" asChild>
-                <Link href="/signup">Get Started</Link>
-              </Button>
+              {!isAuthenticated ? (
+                <>
+                  <Button variant="ghost" className="w-full" asChild>
+                    <Link href="/login">Sign In</Link>
+                  </Button>
+                  <Button className="w-full" asChild>
+                    <Link href="/signup">Get Started</Link>
+                  </Button>
+                </>
+              ) : (
+                <Button variant="ghost" className="w-full" onClick={logout}>
+                  Log Out
+                </Button>
+              )}
             </div>
           </div>
         )}

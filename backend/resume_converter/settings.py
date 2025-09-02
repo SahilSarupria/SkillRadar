@@ -80,7 +80,7 @@ WSGI_APPLICATION = 'resume_converter.wsgi.application'
 # Database
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv("DATABASE_URL"),
+        default=config("DATABASE_URL"),
         conn_max_age=600,
         ssl_require=True
     )
@@ -163,12 +163,31 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+# EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+# EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+# EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+# EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+# Email (DEV)
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "sahilsarupria002@gmail.com"
+EMAIL_HOST_PASSWORD = "mwqa sdsj wygd habc"
+
+DEFAULT_FROM_EMAIL = "no-reply@example.com"
+
+# Site/Frontend base URLs used in email links
+FRONTEND_BASE_URL = "http://localhost:3000"  # adjust if needed
+BACKEND_BASE_URL = "http://localhost:8000"
+
+
+
 
 # OpenAI Configuration
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')

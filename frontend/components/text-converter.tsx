@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -83,8 +83,14 @@ const GRID_SIZE = 10
 const MIN_SECTION_WIDTH = 100
 const MIN_SECTION_HEIGHT = 40
 
-export function TextConverter() {
-  const [inputText, setInputText] = useState("")
+export function TextConverter({
+  initialContent = "",
+  onContentChange,
+}: {
+  initialContent?: string
+  onContentChange?: (content: string) => void
+}) {
+  const [inputText, setInputText] = useState(initialContent || "")
   const [convertedResume, setConvertedResume] = useState("")
   const [isConverting, setIsConverting] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -97,6 +103,7 @@ export function TextConverter() {
     isResizing: false,
     resizeHandle: null,
   })
+  
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showGrid, setShowGrid] = useState(true)
@@ -105,6 +112,83 @@ export function TextConverter() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const canvasRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
+  // Snap threshold in pixels
+const SNAP_THRESHOLD = 8
+
+function getSmartSnapPosition(
+  movingSection: ResumeSection,
+  allSections: ResumeSection[],
+  canvasWidth: number,
+  canvasHeight: number
+) {
+  let { x, y, width, height } = {
+    x: movingSection.position.x,
+    y: movingSection.position.y,
+    width: movingSection.size.width,
+    height: movingSection.size.height,
+  }
+  let snapX = x
+  let snapY = y
+  let verticalGuide: number | null = null
+  let horizontalGuide: number | null = null
+
+  // Snap to canvas center
+  const centerX = x + width / 2
+  const centerY = y + height / 2
+  if (Math.abs(centerX - canvasWidth / 2) < SNAP_THRESHOLD) {
+    snapX = canvasWidth / 2 - width / 2
+    verticalGuide = canvasWidth / 2
+  }
+  if (Math.abs(centerY - canvasHeight / 2) < SNAP_THRESHOLD) {
+    snapY = canvasHeight / 2 - height / 2
+    horizontalGuide = canvasHeight / 2
+  }
+
+  // Snap to other sections' edges and centers
+  for (const section of allSections) {
+    if (section.id === movingSection.id) continue
+    const other = section
+    const otherEdges = [
+      other.position.x, // left
+      other.position.x + other.size.width, // right
+      other.position.x + other.size.width / 2, // center
+    ]
+    const movingEdges = [
+      { val: x, set: (v: number) => (snapX = v) }, // left
+      { val: x + width, set: (v: number) => (snapX = v - width) }, // right
+      { val: x + width / 2, set: (v: number) => (snapX = v - width / 2) }, // center
+    ]
+    for (let i = 0; i < movingEdges.length; i++) {
+      for (let j = 0; j < otherEdges.length; j++) {
+        if (Math.abs(movingEdges[i].val - otherEdges[j]) < SNAP_THRESHOLD) {
+          movingEdges[i].set(otherEdges[j])
+          verticalGuide = otherEdges[j]
+        }
+      }
+    }
+
+    const otherVEdges = [
+      other.position.y, // top
+      other.position.y + other.size.height, // bottom
+      other.position.y + other.size.height / 2, // center
+    ]
+    const movingVEdges = [
+      { val: y, set: (v: number) => (snapY = v) }, // top
+      { val: y + height, set: (v: number) => (snapY = v - height) }, // bottom
+      { val: y + height / 2, set: (v: number) => (snapY = v - height / 2) }, // center
+    ]
+    for (let i = 0; i < movingVEdges.length; i++) {
+      for (let j = 0; j < otherVEdges.length; j++) {
+        if (Math.abs(movingVEdges[i].val - otherVEdges[j]) < SNAP_THRESHOLD) {
+          movingVEdges[i].set(otherVEdges[j])
+          horizontalGuide = otherVEdges[j]
+        }
+      }
+    }
+  }
+
+  return { snapX, snapY, verticalGuide, horizontalGuide }
+}
 
   const componentTemplates = {
     header: {
@@ -240,178 +324,6 @@ export function TextConverter() {
       setResumeSections(history[historyIndex + 1])
     }
   }, [history, historyIndex])
-
-  const handleConvert = async () => {
-    if (!inputText.trim()) {
-      toast({
-        title: "Please enter some text",
-        description: "Add your career information to convert into a resume format.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsConverting(true)
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    const mockResume = `JOHN DOE
-Software Engineer
-Email: john.doe@email.com | Phone: (555) 123-4567
-LinkedIn: linkedin.com/in/johndoe | Location: San Francisco, CA
-
-PROFESSIONAL SUMMARY
-Experienced software engineer with 5+ years of expertise in full-stack development, specializing in React, Node.js, and cloud technologies. Proven track record of delivering scalable applications and leading cross-functional teams to achieve business objectives.
-
-TECHNICAL SKILLS
-• Programming Languages: JavaScript, TypeScript, Python, Java
-• Frontend: React, Next.js, Vue.js, HTML5, CSS3, Tailwind CSS
-• Backend: Node.js, Express.js, Django, REST APIs, GraphQL
-• Databases: PostgreSQL, MongoDB, Redis
-• Cloud & DevOps: AWS, Docker, Kubernetes, CI/CD
-
-PROFESSIONAL EXPERIENCE
-
-Senior Software Engineer | TechCorp Inc. | 2021 - Present
-• Led development of customer-facing web applications serving 100K+ users
-• Implemented microservices architecture reducing system latency by 40%
-• Mentored junior developers and established coding best practices
-• Collaborated with product teams to deliver features ahead of schedule
-
-Software Engineer | StartupXYZ | 2019 - 2021
-• Built responsive web applications using React and Node.js
-• Developed RESTful APIs and integrated third-party services
-• Optimized database queries improving application performance by 30%
-• Participated in agile development processes and code reviews
-
-EDUCATION
-Bachelor of Science in Computer Science
-University of California, Berkeley | 2019
-
-CERTIFICATIONS
-• AWS Certified Solutions Architect
-• Google Cloud Professional Developer`
-
-    setConvertedResume(mockResume)
-
-    const sections: ResumeSection[] = [
-      {
-        id: "header",
-        type: "header",
-        title: "Header",
-        content: "JOHN DOE\nSoftware Engineer",
-        position: { x: 50, y: 50 },
-        size: { width: 694, height: 80 },
-        style: {
-          fontSize: "24px",
-          fontWeight: "bold",
-          color: "#1f2937",
-          backgroundColor: "#f8fafc",
-          padding: "20px",
-          borderRadius: "8px",
-          textAlign: "center",
-          borderWidth: "0px",
-          borderColor: "#e5e7eb",
-        },
-        page: 1,
-      },
-      {
-        id: "contact",
-        type: "contact",
-        title: "Contact Info",
-        content: "📧 john.doe@email.com\n📱 (555) 123-4567\n📍 San Francisco, CA\n🌐 linkedin.com/in/johndoe",
-        position: { x: 50, y: 150 },
-        size: { width: 300, height: 100 },
-        style: {
-          fontSize: "12px",
-          fontWeight: "normal",
-          color: "#374151",
-          backgroundColor: "#ffffff",
-          padding: "16px",
-          borderRadius: "6px",
-          textAlign: "left",
-          borderWidth: "1px",
-          borderColor: "#e5e7eb",
-        },
-        page: 1,
-      },
-      {
-        id: "summary",
-        type: "summary",
-        title: "Professional Summary",
-        content:
-          "Experienced software engineer with 5+ years of expertise in full-stack development, specializing in React, Node.js, and cloud technologies.",
-        position: { x: 370, y: 150 },
-        size: { width: 374, height: 100 },
-        style: {
-          fontSize: "14px",
-          fontWeight: "normal",
-          color: "#374151",
-          backgroundColor: "#ffffff",
-          padding: "16px",
-          borderRadius: "6px",
-          textAlign: "left",
-          borderWidth: "1px",
-          borderColor: "#e5e7eb",
-        },
-        page: 1,
-      },
-      {
-        id: "skills",
-        type: "skills",
-        title: "Technical Skills",
-        content:
-          "• Programming: JavaScript, TypeScript, Python, Java\n• Frontend: React, Next.js, Vue.js, HTML5, CSS3\n• Backend: Node.js, Express.js, Django, REST APIs\n• Cloud: AWS, Docker, Kubernetes",
-        position: { x: 50, y: 270 },
-        size: { width: 694, height: 120 },
-        style: {
-          fontSize: "14px",
-          fontWeight: "normal",
-          color: "#374151",
-          backgroundColor: "#ffffff",
-          padding: "16px",
-          borderRadius: "6px",
-          textAlign: "left",
-          borderWidth: "1px",
-          borderColor: "#e5e7eb",
-        },
-        page: 1,
-      },
-      {
-        id: "experience",
-        type: "experience",
-        title: "Work Experience",
-        content:
-          "Senior Software Engineer | TechCorp Inc. | 2021 - Present\n• Led development of customer-facing web applications\n• Implemented microservices architecture\n• Mentored junior developers",
-        position: { x: 50, y: 410 },
-        size: { width: 694, height: 150 },
-        style: {
-          fontSize: "14px",
-          fontWeight: "normal",
-          color: "#374151",
-          backgroundColor: "#ffffff",
-          padding: "16px",
-          borderRadius: "6px",
-          textAlign: "left",
-          borderWidth: "1px",
-          borderColor: "#e5e7eb",
-        },
-        page: 1,
-      },
-    ]
-
-    setResumeSections(sections)
-    setTotalPages(1)
-    setCurrentPage(1)
-    setHistory([sections])
-    setHistoryIndex(0)
-    setIsConverting(false)
-    setShowBuilder(true)
-
-    toast({
-      title: "Resume converted successfully!",
-      description: "Now customize your resume with the advanced visual builder.",
-    })
-  }
 
   const handleSectionUpdate = useCallback(
     (sectionId: string, updates: Partial<ResumeSection>) => {
@@ -635,13 +547,26 @@ CERTIFICATIONS
       if (!section) return
 
       if (dragState.isDragging) {
-        const newX = currentX - dragState.dragOffset.x
-        const newY = currentY - dragState.dragOffset.y
+  const { snapX, snapY, verticalGuide, horizontalGuide } = getSmartSnapPosition(
+    {
+      ...selectedSection,
+      position: {
+        x: currentX - dragState.dragOffset.x,
+        y: currentY - dragState.dragOffset.y,
+      },
+    },
+    resumeSections,
+    CANVAS_WIDTH,
+    CANVAS_HEIGHT
+  )
 
-        handleSectionUpdate(selectedSection, {
-          position: { x: newX, y: newY },
-        })
-      } else if (dragState.isResizing && dragState.resizeHandle) {
+  setGuides({ vertical: verticalGuide, horizontal: horizontalGuide }) // see next step
+
+  handleSectionUpdate(selectedSection, {
+    position: { x: snapX, y: snapY },
+  })}
+
+      if (dragState.isResizing && dragState.resizeHandle) {
         const handle = dragState.resizeHandle
         let newWidth = section.size.width
         let newHeight = section.size.height
@@ -649,20 +574,20 @@ CERTIFICATIONS
         let newY = section.position.y
 
         if (handle.includes("right")) {
-          newWidth = Math.max(MIN_SECTION_WIDTH, currentX - section.position.x)
+          newWidth = Math.max(MIN_SECTION_WIDTH, snapToGridFn(currentX - section.position.x))
         }
         if (handle.includes("bottom")) {
-          newHeight = Math.max(MIN_SECTION_HEIGHT, currentY - section.position.y)
+          newHeight = Math.max(MIN_SECTION_HEIGHT, snapToGridFn(currentY - section.position.y))
         }
         if (handle.includes("left")) {
           const deltaX = currentX - section.position.x
-          newWidth = Math.max(MIN_SECTION_WIDTH, section.size.width - deltaX)
-          newX = currentX
+          newWidth = Math.max(MIN_SECTION_WIDTH, snapToGridFn(section.size.width - deltaX))
+          newX = snapToGridFn(currentX)
         }
         if (handle.includes("top")) {
           const deltaY = currentY - section.position.y
-          newHeight = Math.max(MIN_SECTION_HEIGHT, section.size.height - deltaY)
-          newY = currentY
+          newHeight = Math.max(MIN_SECTION_HEIGHT, snapToGridFn(section.size.height - deltaY))
+          newY = snapToGridFn(currentY)
         }
 
         handleSectionUpdate(selectedSection, {
@@ -683,644 +608,545 @@ CERTIFICATIONS
     })
   }, [])
 
-  if (showBuilder) {
-    const currentPageSections = resumeSections.filter((s) => s.page === currentPage)
+  // Update inputText if initialContent changes (e.g., after AI generation)
+  useEffect(() => {
+    if (initialContent !== undefined && initialContent !== inputText) {
+      setInputText(initialContent)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialContent])
 
-    return (
-      <div className="space-y-6">
-        {/* Enhanced Builder Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-space-grotesk font-bold">Advanced Resume Builder</h2>
-            <p className="text-muted-foreground">Professional drag-and-drop resume editor with multi-page support</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={undo} disabled={historyIndex <= 0}>
-              <RotateCcw className="h-4 w-4" />
+  // Notify parent of content changes
+  useEffect(() => {
+    if (onContentChange) onContentChange(inputText)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputText])
+
+  const currentPageSections = resumeSections.filter((section) => section.page === currentPage)
+
+  return (
+    <div className="space-y-6">
+      {/* Enhanced Builder Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-space-grotesk font-bold">Advanced Resume Builder</h2>
+          <p className="text-muted-foreground">Professional drag-and-drop resume editor with multi-page support</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={undo} disabled={historyIndex <= 0}>
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={redo} disabled={historyIndex >= history.length - 1}>
+            <RotateCw className="h-4 w-4" />
+          </Button>
+          <Separator orientation="vertical" className="h-6" />
+          <Button variant="outline" size="sm" onClick={() => setShowGrid(!showGrid)}>
+            <Grid3X3 className="h-4 w-4 mr-2" />
+            Grid
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setSnapToGrid(!snapToGrid)}>
+            <Maximize2 className="h-4 w-4 mr-2" />
+            Snap
+          </Button>
+          <Separator orientation="vertical" className="h-6" />
+          <Button variant="outline" size="sm" onClick={() => setShowBuilder(false)}>
+            <Edit3 className="h-4 w-4 mr-2" />
+            Edit Text
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportTemplate}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <label>
+            <Button variant="outline" size="sm" asChild>
+              <span>
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </span>
             </Button>
-            <Button variant="outline" size="sm" onClick={redo} disabled={historyIndex >= history.length - 1}>
-              <RotateCw className="h-4 w-4" />
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button variant="outline" size="sm" onClick={() => setShowGrid(!showGrid)}>
-              <Grid3X3 className="h-4 w-4 mr-2" />
-              Grid
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setSnapToGrid(!snapToGrid)}>
-              <Maximize2 className="h-4 w-4 mr-2" />
-              Snap
-            </Button>
-            <Separator orientation="vertical" className="h-6" />
-            <Button variant="outline" size="sm" onClick={() => setShowBuilder(false)}>
-              <Edit3 className="h-4 w-4 mr-2" />
-              Edit Text
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportTemplate}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <label>
-              <Button variant="outline" size="sm" asChild>
-                <span>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
+            <input type="file" accept=".json" onChange={importTemplate} className="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Enhanced Sidebar */}
+        <div className="lg:col-span-1 space-y-4">
+          {/* Component Library */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Components</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(componentTemplates).map(([type, template]) => {
+                  const Icon = template.icon
+                  return (
+                    <Button
+                      key={type}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAddSection(type as keyof typeof componentTemplates)}
+                      className="h-auto p-2 flex flex-col items-center space-y-1"
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-xs">{template.title}</span>
+                    </Button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Page Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Pages</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">
+                  Page {currentPage} of {totalPages}
                 </span>
-              </Button>
-              <input type="file" accept=".json" onChange={importTemplate} className="hidden" />
-            </label>
-          </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm" onClick={addPage} className="flex-1 bg-transparent">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={deletePage}
+                  disabled={totalPages === 1}
+                  className="flex-1 bg-transparent"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Current Page Sections</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {currentPageSections.map((section) => (
+                <div
+                  key={section.id}
+                  className={`p-2 rounded cursor-pointer text-sm transition-colors ${
+                    selectedSection === section.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                  }`}
+                  onClick={() => handleSectionClick(section.id)}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{section.title}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteSection(section.id)
+                      }}
+                      className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Enhanced Style Panel */}
+          {selectedSection && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Style Options</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="typography" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="typography">Text</TabsTrigger>
+                    <TabsTrigger value="layout">Layout</TabsTrigger>
+                    <TabsTrigger value="appearance">Style</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="typography" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Font Size</Label>
+                      <Select
+                        value={resumeSections.find((s) => s.id === selectedSection)?.style.fontSize}
+                        onValueChange={(value) =>
+                          handleSectionUpdate(selectedSection, {
+                            style: {
+                              ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                              fontSize: value,
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10px">Extra Small</SelectItem>
+                          <SelectItem value="12px">Small</SelectItem>
+                          <SelectItem value="14px">Medium</SelectItem>
+                          <SelectItem value="16px">Large</SelectItem>
+                          <SelectItem value="18px">Extra Large</SelectItem>
+                          <SelectItem value="24px">Heading</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Font Weight</Label>
+                      <Select
+                        value={resumeSections.find((s) => s.id === selectedSection)?.style.fontWeight}
+                        onValueChange={(value) =>
+                          handleSectionUpdate(selectedSection, {
+                            style: {
+                              ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                              fontWeight: value,
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="normal">Normal</SelectItem>
+                          <SelectItem value="bold">Bold</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Text Alignment</Label>
+                      <div className="flex space-x-1">
+                        {(["left", "center", "right"] as const).map((align) => (
+                          <Button
+                            key={align}
+                            variant={
+                              resumeSections.find((s) => s.id === selectedSection)?.style.textAlign === align
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            onClick={() =>
+                              handleSectionUpdate(selectedSection, {
+                                style: {
+                                  ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                                  textAlign: align,
+                                },
+                              })
+                            }
+                          >
+                            {align === "left" && <AlignLeft className="h-4 w-4" />}
+                            {align === "center" && <AlignCenter className="h-4 w-4" />}
+                            {align === "right" && <AlignRight className="h-4 w-4" />}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="layout" className="space-y-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                        <Label>Width</Label>
+                        <Input
+                          type="number"
+                          value={resumeSections.find((s) => s.id === selectedSection)?.size.width || 0}
+                          onChange={(e) =>
+                            handleSectionUpdate(selectedSection, {
+                              size: {
+                                ...resumeSections.find((s) => s.id === selectedSection)!.size,
+                                width: Number.parseInt(e.target.value) || MIN_SECTION_WIDTH,
+                              },
+                            })
+                          }
+                          min={MIN_SECTION_WIDTH}
+                          max={CANVAS_WIDTH}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Height</Label>
+                        <Input
+                          type="number"
+                          value={resumeSections.find((s) => s.id === selectedSection)?.size.height || 0}
+                          onChange={(e) =>
+                            handleSectionUpdate(selectedSection, {
+                              size: {
+                                ...resumeSections.find((s) => s.id === selectedSection)!.size,
+                                height: Number.parseInt(e.target.value) || MIN_SECTION_HEIGHT,
+                              },
+                            })
+                          }
+                          min={MIN_SECTION_HEIGHT}
+                          max={CANVAS_HEIGHT}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                        <Label>X Position</Label>
+                        <Input
+                          type="number"
+                          value={resumeSections.find((s) => s.id === selectedSection)?.position.x || 0}
+                          onChange={(e) =>
+                            handleSectionUpdate(selectedSection, {
+                              position: {
+                                ...resumeSections.find((s) => s.id === selectedSection)!.position,
+                                x: Number.parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          min={0}
+                          max={CANVAS_WIDTH}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Y Position</Label>
+                        <Input
+                          type="number"
+                          value={resumeSections.find((s) => s.id === selectedSection)?.position.y || 0}
+                          onChange={(e) =>
+                            handleSectionUpdate(selectedSection, {
+                              position: {
+                                ...resumeSections.find((s) => s.id === selectedSection)!.position,
+                                y: Number.parseInt(e.target.value) || 0,
+                              },
+                            })
+                          }
+                          min={0}
+                          max={CANVAS_HEIGHT}
+                        />
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="appearance" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Text Color</Label>
+                      <Input
+                        type="color"
+                        value={resumeSections.find((s) => s.id === selectedSection)?.style.color}
+                        onChange={(e) =>
+                          handleSectionUpdate(selectedSection, {
+                            style: {
+                              ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                              color: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Background Color</Label>
+                      <Input
+                        type="color"
+                        value={resumeSections.find((s) => s.id === selectedSection)?.style.backgroundColor}
+                        onChange={(e) =>
+                          handleSectionUpdate(selectedSection, {
+                            style: {
+                              ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                              backgroundColor: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Border Color</Label>
+                      <Input
+                        type="color"
+                        value={resumeSections.find((s) => s.id === selectedSection)?.style.borderColor}
+                        onChange={(e) =>
+                          handleSectionUpdate(selectedSection, {
+                            style: {
+                              ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                              borderColor: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Border Width</Label>
+                      <Select
+                        value={resumeSections.find((s) => s.id === selectedSection)?.style.borderWidth}
+                        onValueChange={(value) =>
+                          handleSectionUpdate(selectedSection, {
+                            style: {
+                              ...resumeSections.find((s) => s.id === selectedSection)!.style,
+                              borderWidth: value,
+                            },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0px">None</SelectItem>
+                          <SelectItem value="1px">Thin</SelectItem>
+                          <SelectItem value="2px">Medium</SelectItem>
+                          <SelectItem value="3px">Thick</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Enhanced Sidebar */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Component Library */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Components</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(componentTemplates).map(([type, template]) => {
-                    const Icon = template.icon
-                    return (
-                      <Button
-                        key={type}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddSection(type as keyof typeof componentTemplates)}
-                        className="h-auto p-2 flex flex-col items-center space-y-1"
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="text-xs">{template.title}</span>
-                      </Button>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+        {/* Enhanced Canvas */}
+        <div className="lg:col-span-4">
+          <Card className="h-[900px]">
+            <CardContent className="p-0 h-full">
+              <div
+                ref={canvasRef}
+                className="relative w-full h-full bg-white overflow-auto"
+                style={{
+                  backgroundImage: showGrid
+                    ? `
+                    linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+                    linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)
+                  `
+                    : "none",
+                  backgroundSize: showGrid ? `${GRID_SIZE}px ${GRID_SIZE}px` : "auto",
+                }}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+              >
+                {/* Canvas boundary indicator */}
+                <div
+                  className="absolute border-2 border-dashed border-gray-300 pointer-events-none"
+                  style={{
+                    width: CANVAS_WIDTH,
+                    height: CANVAS_HEIGHT,
+                    left: 20,
+                    top: 20,
+                  }}
+                />
 
-            {/* Page Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Pages</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
+                {/* Page indicator */}
+                <div className="absolute top-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-medium">
+                  Page {currentPage} of {totalPages}
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" onClick={addPage} className="flex-1 bg-transparent">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={deletePage}
-                    disabled={totalPages === 1}
-                    className="flex-1 bg-transparent"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Section List */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Current Page Sections</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
                 {currentPageSections.map((section) => (
                   <div
                     key={section.id}
-                    className={`p-2 rounded cursor-pointer text-sm transition-colors ${
-                      selectedSection === section.id ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+                    className={`absolute cursor-move border-2 transition-all select-none ${
+                      selectedSection === section.id
+                        ? "border-primary shadow-lg z-10"
+                        : "border-transparent hover:border-muted-foreground/30"
                     }`}
+                    style={{
+                      left: section.position.x + 20,
+                      top: section.position.y + 20,
+                      width: section.size.width,
+                      height: section.size.height,
+                      ...section.style,
+                      textAlign: section.style.textAlign,
+                      border: `${section.style.borderWidth} solid ${section.style.borderColor}`,
+                      userSelect: "none",
+                    }}
                     onClick={() => handleSectionClick(section.id)}
+                    onMouseDown={(e) => handleMouseDown(e, section.id, "drag")}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="truncate">{section.title}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteSection(section.id)
+                    <div className="w-full h-full overflow-hidden pointer-events-none">
+                      <div className="text-xs font-medium text-primary mb-1 opacity-60">{section.title}</div>
+                      <div
+                        className="text-sm whitespace-pre-wrap overflow-hidden"
+                        style={{
+                          fontSize: section.style.fontSize,
+                          fontWeight: section.style.fontWeight,
+                          color: section.style.color,
                         }}
-                        className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
                       >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                        {section.content}
+                      </div>
                     </div>
+
+                    {/* Resize handles */}
+                    {selectedSection === section.id && (
+                      <>
+                        {/* Corner handles */}
+                        <div
+                          className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-white cursor-nw-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "top-left")}
+                        />
+                        <div
+                          className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "top-right")}
+                        />
+                        <div
+                          className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-white cursor-sw-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "bottom-left")}
+                        />
+                        <div
+                          className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "bottom-right")}
+                        />
+
+                        {/* Edge handles */}
+                        <div
+                          className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-primary border border-white cursor-n-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "top")}
+                        />
+                        <div
+                          className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-primary border border-white cursor-s-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "bottom")}
+                        />
+                        <div
+                          className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-primary border border-white cursor-w-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "left")}
+                        />
+                        <div
+                          className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-primary border border-white cursor-e-resize"
+                          onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "right")}
+                        />
+                      </>
+                    )}
                   </div>
                 ))}
-              </CardContent>
-            </Card>
-
-            {/* Enhanced Style Panel */}
-            {selectedSection && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Style Options</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="typography" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="typography">Text</TabsTrigger>
-                      <TabsTrigger value="layout">Layout</TabsTrigger>
-                      <TabsTrigger value="appearance">Style</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="typography" className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Font Size</Label>
-                        <Select
-                          value={resumeSections.find((s) => s.id === selectedSection)?.style.fontSize}
-                          onValueChange={(value) =>
-                            handleSectionUpdate(selectedSection, {
-                              style: {
-                                ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                fontSize: value,
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="10px">Extra Small</SelectItem>
-                            <SelectItem value="12px">Small</SelectItem>
-                            <SelectItem value="14px">Medium</SelectItem>
-                            <SelectItem value="16px">Large</SelectItem>
-                            <SelectItem value="18px">Extra Large</SelectItem>
-                            <SelectItem value="24px">Heading</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Font Weight</Label>
-                        <Select
-                          value={resumeSections.find((s) => s.id === selectedSection)?.style.fontWeight}
-                          onValueChange={(value) =>
-                            handleSectionUpdate(selectedSection, {
-                              style: {
-                                ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                fontWeight: value,
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="normal">Normal</SelectItem>
-                            <SelectItem value="bold">Bold</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Text Alignment</Label>
-                        <div className="flex space-x-1">
-                          {(["left", "center", "right"] as const).map((align) => (
-                            <Button
-                              key={align}
-                              variant={
-                                resumeSections.find((s) => s.id === selectedSection)?.style.textAlign === align
-                                  ? "default"
-                                  : "outline"
-                              }
-                              size="sm"
-                              onClick={() =>
-                                handleSectionUpdate(selectedSection, {
-                                  style: {
-                                    ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                    textAlign: align,
-                                  },
-                                })
-                              }
-                            >
-                              {align === "left" && <AlignLeft className="h-4 w-4" />}
-                              {align === "center" && <AlignCenter className="h-4 w-4" />}
-                              {align === "right" && <AlignRight className="h-4 w-4" />}
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="layout" className="space-y-4">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-2">
-                          <Label>Width</Label>
-                          <Input
-                            type="number"
-                            value={resumeSections.find((s) => s.id === selectedSection)?.size.width || 0}
-                            onChange={(e) =>
-                              handleSectionUpdate(selectedSection, {
-                                size: {
-                                  ...resumeSections.find((s) => s.id === selectedSection)!.size,
-                                  width: Number.parseInt(e.target.value) || MIN_SECTION_WIDTH,
-                                },
-                              })
-                            }
-                            min={MIN_SECTION_WIDTH}
-                            max={CANVAS_WIDTH}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Height</Label>
-                          <Input
-                            type="number"
-                            value={resumeSections.find((s) => s.id === selectedSection)?.size.height || 0}
-                            onChange={(e) =>
-                              handleSectionUpdate(selectedSection, {
-                                size: {
-                                  ...resumeSections.find((s) => s.id === selectedSection)!.size,
-                                  height: Number.parseInt(e.target.value) || MIN_SECTION_HEIGHT,
-                                },
-                              })
-                            }
-                            min={MIN_SECTION_HEIGHT}
-                            max={CANVAS_HEIGHT}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-2">
-                          <Label>X Position</Label>
-                          <Input
-                            type="number"
-                            value={resumeSections.find((s) => s.id === selectedSection)?.position.x || 0}
-                            onChange={(e) =>
-                              handleSectionUpdate(selectedSection, {
-                                position: {
-                                  ...resumeSections.find((s) => s.id === selectedSection)!.position,
-                                  x: Number.parseInt(e.target.value) || 0,
-                                },
-                              })
-                            }
-                            min={0}
-                            max={CANVAS_WIDTH}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Y Position</Label>
-                          <Input
-                            type="number"
-                            value={resumeSections.find((s) => s.id === selectedSection)?.position.y || 0}
-                            onChange={(e) =>
-                              handleSectionUpdate(selectedSection, {
-                                position: {
-                                  ...resumeSections.find((s) => s.id === selectedSection)!.position,
-                                  y: Number.parseInt(e.target.value) || 0,
-                                },
-                              })
-                            }
-                            min={0}
-                            max={CANVAS_HEIGHT}
-                          />
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="appearance" className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Text Color</Label>
-                        <Input
-                          type="color"
-                          value={resumeSections.find((s) => s.id === selectedSection)?.style.color}
-                          onChange={(e) =>
-                            handleSectionUpdate(selectedSection, {
-                              style: {
-                                ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                color: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Background Color</Label>
-                        <Input
-                          type="color"
-                          value={resumeSections.find((s) => s.id === selectedSection)?.style.backgroundColor}
-                          onChange={(e) =>
-                            handleSectionUpdate(selectedSection, {
-                              style: {
-                                ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                backgroundColor: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Border Color</Label>
-                        <Input
-                          type="color"
-                          value={resumeSections.find((s) => s.id === selectedSection)?.style.borderColor}
-                          onChange={(e) =>
-                            handleSectionUpdate(selectedSection, {
-                              style: {
-                                ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                borderColor: e.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Border Width</Label>
-                        <Select
-                          value={resumeSections.find((s) => s.id === selectedSection)?.style.borderWidth}
-                          onValueChange={(value) =>
-                            handleSectionUpdate(selectedSection, {
-                              style: {
-                                ...resumeSections.find((s) => s.id === selectedSection)!.style,
-                                borderWidth: value,
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="0px">None</SelectItem>
-                            <SelectItem value="1px">Thin</SelectItem>
-                            <SelectItem value="2px">Medium</SelectItem>
-                            <SelectItem value="3px">Thick</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Enhanced Canvas */}
-          <div className="lg:col-span-4">
-            <Card className="h-[900px]">
-              <CardContent className="p-0 h-full">
-                <div
-                  ref={canvasRef}
-                  className="relative w-full h-full bg-white overflow-auto"
-                  style={{
-                    backgroundImage: showGrid
-                      ? `
-                      linear-gradient(to right, #f0f0f0 1px, transparent 1px),
-                      linear-gradient(to bottom, #f0f0f0 1px, transparent 1px)
-                    `
-                      : "none",
-                    backgroundSize: showGrid ? `${GRID_SIZE}px ${GRID_SIZE}px` : "auto",
-                  }}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                >
-                  {/* Canvas boundary indicator */}
-                  <div
-                    className="absolute border-2 border-dashed border-gray-300 pointer-events-none"
-                    style={{
-                      width: CANVAS_WIDTH,
-                      height: CANVAS_HEIGHT,
-                      left: 20,
-                      top: 20,
-                    }}
-                  />
-
-                  {/* Page indicator */}
-                  <div className="absolute top-2 left-2 bg-black/80 text-white px-2 py-1 rounded text-xs font-medium">
-                    Page {currentPage} of {totalPages}
-                  </div>
-
-                  {currentPageSections.map((section) => (
-                    <div
-                      key={section.id}
-                      className={`absolute cursor-move border-2 transition-all select-none ${
-                        selectedSection === section.id
-                          ? "border-primary shadow-lg z-10"
-                          : "border-transparent hover:border-muted-foreground/30"
-                      }`}
-                      style={{
-                        left: section.position.x + 20,
-                        top: section.position.y + 20,
-                        width: section.size.width,
-                        height: section.size.height,
-                        ...section.style,
-                        textAlign: section.style.textAlign,
-                        border: `${section.style.borderWidth} solid ${section.style.borderColor}`,
-                        userSelect: "none",
-                      }}
-                      onClick={() => handleSectionClick(section.id)}
-                      onMouseDown={(e) => handleMouseDown(e, section.id, "drag")}
-                    >
-                      <div className="w-full h-full overflow-hidden pointer-events-none">
-                        <div className="text-xs font-medium text-primary mb-1 opacity-60">{section.title}</div>
-                        <div
-                          className="text-sm whitespace-pre-wrap overflow-hidden"
-                          style={{
-                            fontSize: section.style.fontSize,
-                            fontWeight: section.style.fontWeight,
-                            color: section.style.color,
-                          }}
-                        >
-                          {section.content}
-                        </div>
-                      </div>
-
-                      {/* Resize handles */}
-                      {selectedSection === section.id && (
-                        <>
-                          {/* Corner handles */}
-                          <div
-                            className="absolute -top-1 -left-1 w-3 h-3 bg-primary border border-white cursor-nw-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "top-left")}
-                          />
-                          <div
-                            className="absolute -top-1 -right-1 w-3 h-3 bg-primary border border-white cursor-ne-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "top-right")}
-                          />
-                          <div
-                            className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary border border-white cursor-sw-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "bottom-left")}
-                          />
-                          <div
-                            className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary border border-white cursor-se-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "bottom-right")}
-                          />
-
-                          {/* Edge handles */}
-                          <div
-                            className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-primary border border-white cursor-n-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "top")}
-                          />
-                          <div
-                            className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-primary border border-white cursor-s-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "bottom")}
-                          />
-                          <div
-                            className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-primary border border-white cursor-w-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "left")}
-                          />
-                          <div
-                            className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-primary border border-white cursor-e-resize"
-                            onMouseDown={(e) => handleMouseDown(e, section.id, "resize", "right")}
-                          />
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    )
-  }
-
-  return (
-    <div className="space-y-8">
-      {/* Input Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-space-grotesk flex items-center space-x-2">
-            <Wand2 className="h-5 w-5 text-primary" />
-            <span>Enter Your Career Information</span>
-          </CardTitle>
-          <CardDescription>
-            Paste your career details, work experience, skills, or any text you'd like to convert into a professional
-            resume format with advanced visual customization.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea
-            placeholder="Example: I am a software engineer with 5 years of experience. I worked at TechCorp where I built web applications using React and Node.js. I have skills in JavaScript, Python, AWS, and databases. I graduated from UC Berkeley with a Computer Science degree..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            className="min-h-[200px] resize-none"
-          />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary">{inputText.length} characters</Badge>
-              {inputText.length > 100 && (
-                <Badge variant="outline" className="text-primary border-primary">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Good length
-                </Badge>
-              )}
-            </div>
-            <Button onClick={handleConvert} disabled={isConverting || !inputText.trim()}>
-              {isConverting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                  Converting...
-                </>
-              ) : (
-                <>
-                  <Wand2 className="h-4 w-4 mr-2" />
-                  Convert & Build Visually
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Output Section */}
-      {convertedResume && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="font-space-grotesk">Your Professional Resume</CardTitle>
-                <CardDescription>
-                  AI-generated resume format ready for visual customization with our advanced builder.
-                </CardDescription>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" onClick={handleCopy}>
-                  {copied ? (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2 text-primary" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Copy
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-muted/30 rounded-lg p-6 font-mono text-sm whitespace-pre-wrap border">
-              {convertedResume}
-            </div>
-            <Separator className="my-4" />
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Resume generated with AI formatting</span>
-              <Badge variant="secondary">Ready for visual customization</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Enhanced Tips Section */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardHeader>
-          <CardTitle className="font-space-grotesk text-lg">💡 Pro Tips for Better Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>Include specific job titles, company names, and years of experience</li>
-            <li>Mention technical skills, programming languages, and tools you've used</li>
-            <li>Add quantifiable achievements (e.g., "increased sales by 30%")</li>
-            <li>Include education details, certifications, and relevant projects</li>
-            <li>The more detailed your input, the better the formatted output and visual builder experience</li>
-            <li>Use the visual builder to create multi-page resumes with professional layouts</li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   )
 }
+

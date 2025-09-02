@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,8 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
-import { Eye, EyeOff, Mail, Lock, User, Github, Chrome } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Eye, EyeOff, Mail, Lock, User, Github, Chrome, CheckCircle } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import { register } from "@/lib/api/auth"
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
@@ -25,6 +25,7 @@ export function SignupForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [agreeToTerms, setAgreeToTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [showVerifyNotice, setShowVerifyNotice] = useState(false)
   const { toast } = useToast()
 
   const handleInputChange = (field: string, value: string) => {
@@ -35,7 +36,6 @@ export function SignupForm() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Basic validation
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -56,17 +56,52 @@ export function SignupForm() {
       return
     }
 
-    // Simulate account creation
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    toast({
-      title: "Account created successfully!",
-      description: "Welcome to ResumeAI. You can now start analyzing your resume.",
-    })
-
-    // Redirect to dashboard
-    window.location.href = "/dashboard"
+    try {
+      await register(
+        formData.email,
+        formData.password,
+        formData.confirmPassword,
+        formData.firstName,
+        formData.lastName
+      )
+      toast({
+        title: "Verify your email",
+        description: "We've sent a verification link to your email address. Please verify your email to continue.",
+      })
+      setShowVerifyNotice(true)
+    } catch (err) {
+      toast({
+        title: "Registration failed",
+        description: "Please check your details and try again.",
+        variant: "destructive",
+      })
+    }
     setIsLoading(false)
+  }
+
+  if (showVerifyNotice) {
+    return (
+      <Card>
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle className="h-7 w-7 text-green-600" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Verify Your Email</CardTitle>
+          <CardDescription>
+            We've sent a verification link to <strong>{formData.email}</strong>.<br />
+            Please check your inbox and verify your email to activate your account.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <p className="text-center text-sm text-muted-foreground w-full">
+            Already verified?{" "}
+            <Link href="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
+    )
   }
 
   return (

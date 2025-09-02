@@ -1,15 +1,12 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
-import Link from "next/link"
+import { forgotPassword } from "@/lib/api/auth"
+import { useToast } from "@/components/ui/use-toast"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Mail, ArrowLeft, CheckCircle } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
+import { ArrowLeft, CheckCircle } from "lucide-react"
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
@@ -20,16 +17,20 @@ export function ForgotPasswordForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
-    // Simulate sending reset email
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    setEmailSent(true)
-    toast({
-      title: "Reset link sent!",
-      description: "Check your email for password reset instructions.",
-    })
-
+    try {
+      await forgotPassword(email)
+      setEmailSent(true)
+      toast({
+        title: "Reset link sent!",
+        description: "Check your email for password reset instructions.",
+      })
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      })
+    }
     setIsLoading(false)
   }
 
@@ -83,29 +84,20 @@ export function ForgotPasswordForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10"
-                required
-              />
-            </div>
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              className="w-full border rounded px-3 py-2"
+              placeholder="you@example.com"
+              disabled={isLoading}
+            />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                Sending reset link...
-              </>
-            ) : (
-              "Send Reset Link"
-            )}
+          <Button type="submit" className="w-full" disabled={isLoading || !email}>
+            {isLoading ? "Sending..." : "Send Reset Link"}
           </Button>
         </form>
       </CardContent>

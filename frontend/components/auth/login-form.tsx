@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Separator } from "@/components/ui/separator"
 import { Eye, EyeOff, Mail, Lock, Github, Chrome } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/context/AuthContext"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -20,29 +21,25 @@ export function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
-    // Simulate authentication
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    if (email && password) {
+    try {
+      const data = await login(email, password)
       toast({
         title: "Welcome back!",
         description: "You have been successfully signed in.",
       })
-      // Redirect to dashboard
       window.location.href = "/dashboard"
-    } else {
+    } catch (err) {
       toast({
         title: "Invalid credentials",
         description: "Please check your email and password.",
         variant: "destructive",
       })
     }
-
     setIsLoading(false)
   }
 
