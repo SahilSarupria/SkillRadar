@@ -15,7 +15,9 @@ from .serializers import (
 from .tasks import process_text_to_resume, process_file_upload
 import uuid
 import os
-
+import json
+from django.contrib.auth import get_user_model
+from .utils import AIResumeProcessor
 class ResumeListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     
@@ -207,3 +209,117 @@ def regenerate_resume_section(request, resume_id):
         
     except Resume.DoesNotExist:
         return Response({'error': 'Resume not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def upload_resume_and_parse(request):
+    """
+    Synchronous upload + parse endpoint.
+    Accepts multipart/form-data with field 'file' and optional 'title'.
+    Returns parsed structured resume JSON and created resume id (if saved).
+    """
+    uploaded = request.FILES.get('file')
+    title = request.data.get('title') or (uploaded.name if uploaded is not None else "uploaded_resume")
+    if not uploaded:
+        return Response({'detail': 'file is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # save temporary file
+    ext = os.path.splitext(uploaded.name)[1] or '.bin'
+    tmp_path = default_storage.save(f"temp/{uuid.uuid4()}{ext}", ContentFile(uploaded.read()))
+    full_path = default_storage.path(tmp_path)
+
+    try:
+        processor = AIResumeProcessor()
+        parsed = processor.parse_file(full_path)
+    except Exception as e:
+        return Response({'detail': f'parsing failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    finally:
+        # cleanup temp file if stored on local FS
+        try:
+            default_storage.delete(tmp_path)
+        except Exception:
+            pass
+
+    resume_id = None
+    try:
+        # attempt to create a Resume DB row
+        # safe-create using serializer-like minimal fields
+        r = Resume.objects.create(user=request.user, title=title, status='completed', processed_content=parsed)
+        resume_id = str(r.id)
+    except Exception:
+        # best-effort: if model requires other fields, ignore persistence
+        resume_id = None
+
+    return Response({'resume_id': resume_id, 'parsed': parsed}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def calculate_score(request):
+    """
+    Calculate score for a resume against a given goal.
+    Accepts JSON body:
+      - resume_data: { ... }   OR resume_id: <uuid> (preferred)
+      - goal: { required_skills: [...], min_experience_years: int, weight_skills: float }
+    """
+    payload = request.data or {}
+    goal = payload.get('goal') or {}
+    resume_data = payload.get('resume_data')
+
+    # if resume_id provided, load from DB
+    resume_id = payload.get('resume_id')
+    if not resume_data and resume_id:
+        try:
+            r = Resume.objects.get(id=resume_id, user=request.user)
+            resume_data = getattr(r, 'processed_content', None) or {}
+        except Resume.DoesNotExist:
+            return Response({'detail': 'resume not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not resume_data:
+        return Response({'detail': 'resume_data or resume_id required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        processor = AIResumeProcessor()
+        result = processor.calculate_score(resume_data, goal)
+        return Response(result, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'detail': f'scoring failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def save_resume(request):
+    """
+    Persist edited resume JSON.
+    Body: { resume_id: <uuid>, processed_content: {...} }
+    """
+    resume_id = request.data.get('resume_id')
+    processed = request.data.get('processed_content')
+    if not resume_id or processed is None:
+        return Response({'detail': 'resume_id and processed_content required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        r = Resume.objects.get(id=resume_id, user=request.user)
+        r.processed_content = processed
+        r.status = 'completed'
+        r.save()
+        return Response({'detail': 'saved', 'resume_id': str(r.id)}, status=status.HTTP_200_OK)
+    except Resume.DoesNotExist:
+        return Response({'detail': 'resume not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'detail': f'save failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def resume_detail(request, resume_id):
+    """
+    Return processed_content for a resume id.
+    """
+    try:
+        r = Resume.objects.get(id=resume_id, user=request.user)
+        return Response({'id': str(r.id), 'processed_content': getattr(r, 'processed_content', None)}, status=status.HTTP_200_OK)
+    except Resume.DoesNotExist:
+        return Response({'detail': 'resume not found'}, status=status.HTTP_404_NOT_FOUND)
+
+

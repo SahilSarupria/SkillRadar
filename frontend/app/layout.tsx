@@ -20,7 +20,7 @@ const sourceSansPro = Source_Sans_Pro({
 })
 
 export const metadata: Metadata = {
-  title: "ResumeAI - AI-Powered Resume Analysis & Career Growth",
+  title: "SkillRadar - AI-Powered Resume Analysis & Career Growth",
   description:
     "Transform your career with AI-driven resume analysis, skill gap identification, and personalized learning recommendations.",
   generator: "v0.app",

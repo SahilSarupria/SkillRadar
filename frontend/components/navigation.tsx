@@ -19,7 +19,7 @@ export function Navigation() {
             <div className="bg-primary rounded-lg p-2">
               <Brain className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span className="font-space-grotesk font-bold text-xl text-foreground">ResumeAI</span>
+            <span className="font-space-grotesk font-bold text-xl text-foreground">SkillRadar</span>
           </Link>
 
           {/* Desktop Navigation */}

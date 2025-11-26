@@ -74,16 +74,12 @@ class Skill(models.Model):
         return self.name
 
 class JobRole(models.Model):
-    """Job roles with required skills"""
     title = models.CharField(max_length=200)
     industry = models.CharField(max_length=100)
-    level = models.CharField(max_length=50, choices=[
-        ('entry', 'Entry Level'),
-        ('mid', 'Mid Level'),
-        ('senior', 'Senior Level'),
-        ('lead', 'Lead/Principal'),
-        ('executive', 'Executive'),
-    ])
+    level = models.CharField(max_length=50, choices=[('intern', 'Intern'), ('junior', 'Junior'), ('mid', 'Mid'), ('senior', 'Senior')])
+    min_experience_years = models.PositiveIntegerField(default=2)
+    weight_skills = models.FloatField(default=0.7)
+
     
     description = models.TextField(blank=True)
     required_skills = models.ManyToManyField(Skill, through='JobRoleSkill', related_name='required_for_roles')

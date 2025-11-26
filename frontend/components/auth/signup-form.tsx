@@ -109,7 +109,7 @@ export function SignupForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="font-space-grotesk text-2xl text-center">Create Account</CardTitle>
         <CardDescription className="text-center">
-          Enter your information to create your ResumeAI account
+          Enter your information to create your SkillRadar account
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

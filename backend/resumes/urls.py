@@ -14,4 +14,10 @@ urlpatterns = [
     # Templates and utilities
     path('templates/', views.get_resume_templates, name='resume-templates'),
     path('<uuid:resume_id>/regenerate-section/', views.regenerate_resume_section, name='regenerate-section'),
+    
+    # Additional features
+    path("upload-resume/", views.upload_resume_and_parse, name="upload-resume"),
+    path("calculate-score/", views.calculate_score, name="calculate-score"),
+    path("save-resume/", views.save_resume, name="save-resume"),
+    path("<uuid:resume_id>/", views.resume_detail, name="resume-detail"),
 ]

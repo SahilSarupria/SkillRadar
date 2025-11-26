@@ -152,3 +152,13 @@ class SkillSearchSerializer(serializers.Serializer):
     )
     category = serializers.IntegerField(required=False, help_text="Filter by category ID")
     industry = serializers.CharField(max_length=100, required=False, help_text="Filter by industry")
+
+
+# serializers.py
+from rest_framework import serializers
+from .models import JobRole
+
+class JobRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobRole
+        fields = ['id', 'title', 'industry', 'level']

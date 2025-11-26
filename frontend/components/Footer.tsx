@@ -12,7 +12,7 @@ export function Footer() {
               <div className="bg-primary rounded-lg p-2">
                 <Brain className="h-6 w-6 text-primary-foreground" />
               </div>
-              <span className="font-space-grotesk font-bold text-xl text-foreground">ResumeAI</span>
+              <span className="font-space-grotesk font-bold text-xl text-foreground">SkillRadar</span>
             </Link>
             <p className="text-muted-foreground text-sm mb-4">
               AI-powered resume analysis and career growth platform helping professionals advance their careers.
@@ -114,7 +114,7 @@ export function Footer() {
 
         <div className="border-t border-border mt-8 pt-8 text-center">
           <p className="text-muted-foreground text-sm">
-            © 2024 ResumeAI. All rights reserved. Built with AI to help you succeed.
+            © 2024 SkillRadar. All rights reserved. Built with AI to help you succeed.
           </p>
         </div>
       </div>

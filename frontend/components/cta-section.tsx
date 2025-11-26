@@ -18,7 +18,7 @@ export function CTASection() {
         <h2 className="font-space-grotesk font-bold text-3xl lg:text-4xl mb-6">Ready to Transform Your Career?</h2>
         <p className="text-xl text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
           Join thousands of professionals who have already improved their resumes and advanced their careers with
-          ResumeAI.
+          SkillRadar.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -10,7 +10,7 @@ export default function LoginPage() {
         <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
             <h1 className="font-space-grotesk font-bold text-3xl text-foreground mb-2">Welcome Back</h1>
-            <p className="text-muted-foreground">Sign in to your ResumeAI account to continue your career journey.</p>
+            <p className="text-muted-foreground">Sign in to your SkillRadar account to continue your career journey.</p>
           </div>
           <LoginForm />
         </div>

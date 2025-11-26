@@ -2,5 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.index, name='skills-index'),
+    path("job-roles/get-goal/<int:job_role_id>/", views.get_goal),
+    path("job-roles/", views.JobRoleListView.as_view(), name="job-role-list"),
+
+
 ]

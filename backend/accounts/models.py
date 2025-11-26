@@ -39,6 +39,7 @@ class User(AbstractUser):
     is_premium = models.BooleanField(default=False)
     premium_expires_at = models.DateTimeField(blank=True, null=True)
     
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
@@ -75,6 +76,7 @@ class UserProfile(models.Model):
     years_of_experience = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
     
     def __str__(self):
         return f"{self.user.email} Profile"
