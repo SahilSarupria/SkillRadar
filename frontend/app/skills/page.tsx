@@ -2,6 +2,7 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { SkillGapAnalyzer } from "@/components/skill-gap-analyzer"
 import { SkillsTimeline } from "@/components/skills-timeline"
+import { EnhancedSkillsTimeline } from "@/components/enhanced-skills-timeline"
 
 export default function SkillsPage() {
   return (
@@ -20,7 +21,7 @@ export default function SkillsPage() {
           </div>
 
           <div className="mb-12">
-            <SkillsTimeline />
+            <EnhancedSkillsTimeline />
           </div>
 
           <SkillGapAnalyzer />
